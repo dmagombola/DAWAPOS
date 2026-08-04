@@ -61,8 +61,28 @@ function toggleUserStatus(id) { const u = db.users.find(x => x.id === id); if (!
 function deleteUser(id) { if (!confirm('Delete this user?')) return; db.users = db.users.filter(u => u.id !== id); saveData(); renderUsers(); showToast('User deleted', 'success'); }
 
 // ===== SETTINGS =====
-function loadSettings() { document.getElementById('setPharmacyName').value = db.settings.pharmacyName; document.getElementById('setPhone').value = db.settings.phone; document.getElementById('setEmail').value = db.settings.email; document.getElementById('setAddress').value = db.settings.address; document.getElementById('setCurrency').value = db.settings.currency; document.getElementById('setTax').value = db.settings.taxRate; document.getElementById('setThreshold').value = db.settings.lowStockThreshold; }
+function loadSettings() { document.getElementById('setPharmacyName').value = db.settings.pharmacyName; document.getElementById('setPhone').value = db.settings.phone; document.getElementById('setEmail').value = db.settings.email; document.getElementById('setAddress').value = db.settings.address; document.getElementById('setCurrency').value = db.settings.currency; document.getElementById('setTax').value = db.settings.taxRate; document.getElementById('setThreshold').value = db.settings.lowStockThreshold;
+ document.getElementById('setSmsEnabled').checked = db.settings.smsEnabled !== false;
+ document.getElementById('setSmsProvider').value = db.settings.smsProvider || 'africastalking';
+ document.getElementById('setSmsCountryCode').value = db.settings.smsCountryCode || '';
+ document.getElementById('setSmsTemplate').value = db.settings.smsTemplate || DEFAULT_SMS_TEMPLATE; }
+
+// ===== SMS TEST (Settings) =====
+async function sendTestSms() { const phone = document.getElementById('setSmsTestPhone').value.trim(); const out = document.getElementById('smsTestResult');
+ if (!phone) { showToast('Enter a test phone number', 'error'); return; }
+ out.textContent = 'Sending...'; out.style.color = 'var(--gray)';
+ const fake = { id: 0, receipt: 'TEST', date: new Date().toISOString(), items: [{ name: 'Test Item', dose: '', qty: 1, price: 1000, total: 1000 }], total: 1000, payments: { cash: 1000 }, creditDetails: null };
+ try { const { data, error } = await sbClient.functions.invoke('send-sms', { body: { saleId: null, receipt: 'TEST', phone: normalizePhoneLocal(phone) || phone, message: fillSmsTemplate(db.settings.smsTemplate, fake), provider: db.settings.smsProvider || 'africastalking', defaultCc: defaultCountryCode() } });
+  if (error) throw error;
+  if (data.status === 'test') { out.textContent = 'TEST MODE: message validated and logged. Add provider credentials (Supabase secrets) to send real SMS.'; out.style.color = 'var(--info)'; }
+  else if (data.status === 'sent') { out.textContent = 'Sent! Gateway ID: ' + (data.gatewayId || '-'); out.style.color = 'var(--success)'; }
+  else { out.textContent = 'Failed: ' + (data.error || 'unknown error'); out.style.color = 'var(--danger)'; } }
+ catch (e) { out.textContent = 'Error: ' + ((e && e.message) || e); out.style.color = 'var(--danger)'; } }
 function saveSettings() { db.settings.pharmacyName = document.getElementById('setPharmacyName').value.trim() || 'DawaPOS Pharmacy'; db.settings.phone = document.getElementById('setPhone').value.trim(); db.settings.email = document.getElementById('setEmail').value.trim(); db.settings.address = document.getElementById('setAddress').value.trim(); db.settings.currency = document.getElementById('setCurrency').value.trim() || 'KES'; db.settings.taxRate = parseFloat(document.getElementById('setTax').value) || 0; db.settings.lowStockThreshold = parseInt(document.getElementById('setThreshold').value) || 10;
+ db.settings.smsEnabled = document.getElementById('setSmsEnabled').checked;
+ db.settings.smsProvider = document.getElementById('setSmsProvider').value;
+ db.settings.smsCountryCode = document.getElementById('setSmsCountryCode').value.replace(/[^0-9]/g, '');
+ db.settings.smsTemplate = document.getElementById('setSmsTemplate').value.trim() || DEFAULT_SMS_TEMPLATE;
  saveData(); updateDashboard(); showToast('Settings saved and synced!', 'success'); }
 function updateCurrency() { db.settings.currency = document.getElementById('setCurrency').value.trim() || 'KES'; }
 function clearAllData() { if (!confirm('This will erase ALL products, sales, expenses and reminders on ALL devices. User accounts are kept. Continue?')) return; if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
