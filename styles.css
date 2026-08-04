@@ -291,5 +291,15 @@
         .invoice-sheet .inv-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--gray); text-align: center; line-height: 1.8; }
         .inv-edit-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
         .inv-edit-row input { flex: 1; min-width: 140px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; }
-        @media print { .sidebar, .top-bar, .no-print, .offline-bar, .sync-status, .mobile-menu-toggle, .cloud-status, .toast-container, .content-area, .modal-overlay:not(.active) { display: none !important; } .main-content { margin-left: 0; } .receipt { box-shadow: none; } .modal-overlay.active { position: static; padding: 0; background: white; } .modal-overlay.active .modal { box-shadow: none; max-width: 100%; max-height: none; border-radius: 0; } body { background: white; } }
+        @media print { .sidebar, .top-bar, .no-print, .offline-bar, .sync-status, .mobile-menu-toggle, .cloud-status, .toast-container, .content-area, .modal-overlay:not(.active), .install-banner { display: none !important; } .main-content { margin-left: 0; } .receipt { box-shadow: none; } .modal-overlay.active { position: static; padding: 0; background: white; } .modal-overlay.active .modal { box-shadow: none; max-width: 100%; max-height: none; border-radius: 0; } body { background: white; } }
+
+        /* PWA install banner */
+        .install-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 5000; display: flex; align-items: center; gap: 12px; background: var(--dark); color: #fff; padding: 12px 18px; border-radius: 14px; box-shadow: var(--shadow-lg); font-size: 14px; max-width: calc(100vw - 32px); animation: slideUp 0.35s ease; }
+        .install-banner > i { color: #4fd1c5; font-size: 18px; flex-shrink: 0; }
+        .install-banner span { line-height: 1.4; }
+        .install-banner button { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
+        .install-banner button:hover { background: var(--primary-dark); }
+        .install-banner .install-close { background: transparent; padding: 6px 8px; color: #9fb3c8; font-size: 15px; }
+        .install-banner .install-close:hover { background: transparent; color: #fff; }
+        @keyframes slideUp { from { transform: translate(-50%, 120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
     
