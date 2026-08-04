@@ -1,0 +1,31 @@
+{
+  "name": "DawaPOS Pharmacy",
+  "short_name": "DawaPOS",
+  "description": "Pharmacy Point of Sale & Inventory Management with Cloud Sync",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f0f2f5",
+  "theme_color": "#0d7377",
+  "categories": [
+    "business",
+    "medical",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
