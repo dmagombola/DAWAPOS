@@ -39,7 +39,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 let posFilter = 'all';
 let posSearch = '';
 function filterPOS(cat) { posFilter = cat; document.querySelectorAll('#posCategories button').forEach(b => b.classList.toggle('active', b.textContent.trim() === (cat === 'all' ? 'All' : cat))); renderPOS(); }
-function renderPOS() { const grid = document.getElementById('posProductsGrid'); const prods = db.products.filter(p => (posFilter === 'all' || p.category === posFilter) && (!posSearch || p.name.toLowerCase().includes(posSearch) || (p.dose || '').toLowerCase().includes(posSearch) || (p.batch || '').toLowerCase().includes(posSearch)));
+function renderPOS() { const grid = document.getElementById('posProductsGrid'); const prods = db.products.filter(p => (posFilter === 'all' || p.category === posFilter) && (!posSearch || p.name.toLowerCase().includes(posSearch) || (p.dose || '').toLowerCase().includes(posSearch) || (p.batch || '').toLowerCase().includes(posSearch))).sort((a, b) => a.name.localeCompare(b.name));
  if (!prods.length) { grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-box-open"></i><h4>No products</h4><p>Add products in Inventory first</p></div>'; renderCart(); return; }
  grid.innerHTML = prods.map(p => { const days = Math.ceil((new Date(p.expiry) - new Date()) / 86400000); const expBadge = p.expiry ? (days < 0 ? '<span class="expiry-badge">EXPIRED</span>' : days <= 30 ? '<span class="expiry-badge warning">EXP SOON</span>' : '') : '';
   return `<div class="product-card" onclick="addToCart(${p.id})">${expBadge}<img class="prod-img" src="${p.image || PLACEHOLDER_IMG}" onerror="this.src=PLACEHOLDER_IMG"><div class="prod-name">${p.name}</div><div class="prod-dose">${p.dose} &bull; ${p.form}</div><div class="prod-price">${fmt(p.price)}</div><div class="prod-stock ${p.stock <= p.reorder ? 'low' : ''}">Stock: ${p.stock}</div></div>`; }).join('');
@@ -85,14 +85,103 @@ function processCheckout() { if (!db.cart.length) return; const t = cartTotals()
   if (!creditDetails.name || !creditDetails.phone || !creditDetails.dueDate) { showToast('Fill in all credit customer details!', 'error'); return; } }
  db.cart.forEach(i => { const p = db.products.find(x => x.id === i.id); if (p) p.stock -= i.qty; });
  const saleId = nextId(db.sales);
- const sale = { id: saleId, receipt: 'RCP-' + String(saleId).padStart(4, '0'), date: new Date().toISOString(), items: db.cart.map(i => ({ ...i, total: +(i.price * i.qty).toFixed(2) })), subtotal: +t.subtotal.toFixed(2), discount: db.discount || 0, discountAmt: +t.discountAmt.toFixed(2), total: +t.total.toFixed(2), payments: a, creditDetails, settlements: [], by: db.currentUser ? db.currentUser.name : 'Unknown', status: 'completed' };
+ const custPhoneEl = document.getElementById('custSmsPhone'); const enteredPhone = custPhoneEl ? custPhoneEl.value.trim() : '';
+ const sale = { id: saleId, receipt: 'RCP-' + String(saleId).padStart(4, '0'), date: new Date().toISOString(), items: db.cart.map(i => ({ ...i, total: +(i.price * i.qty).toFixed(2) })), subtotal: +t.subtotal.toFixed(2), discount: db.discount || 0, discountAmt: +t.discountAmt.toFixed(2), total: +t.total.toFixed(2), payments: a, creditDetails, settlements: [], by: db.currentUser ? db.currentUser.name : 'Unknown', status: 'completed', customerPhone: enteredPhone || (creditDetails ? creditDetails.phone : '') };
  db.sales.push(sale); db.cart = []; db.discount = 0;
  document.getElementById('discountInput').value = ''; setPayAlloc({});
  ['creditCustomerName', 'creditCustomerPhone', 'creditDueDate', 'creditNotes'].forEach(id => document.getElementById(id).value = '');
- saveData(); renderPOS(); updateDashboard(); showReceipt(sale); showToast('Sale completed!', 'success'); }
+ saveData(); renderPOS(); updateDashboard(); showReceipt(sale); showToast('Sale completed!', 'success');
+ if (sale.customerPhone && db.settings.smsEnabled !== false) { sendGatewaySms(sale, sale.customerPhone); }
+ if (custPhoneEl) custPhoneEl.value = ''; }
 function showReceipt(sale) { if (!sale) return; const payLabels = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', insurance: 'Insurance', credit: 'Credit' };
  const pays = Object.entries(sale.payments).filter(([, v]) => v > 0).map(([k, v]) => `<div class="receipt-row"><span>${payLabels[k]}</span><span>${fmt(v)}</span></div>`).join('');
  document.getElementById('receiptBody').innerHTML = `<div class="receipt"><div class="receipt-header"><h2>${db.settings.pharmacyName}</h2><p>${db.settings.address}<br>${db.settings.phone}</p></div><hr class="receipt-divider"><div class="receipt-row"><span>Receipt:</span><span>${sale.receipt}</span></div><div class="receipt-row"><span>Date:</span><span>${new Date(sale.date).toLocaleString()}</span></div><div class="receipt-row"><span>Served by:</span><span>${sale.by}</span></div><hr class="receipt-divider">${sale.items.map(i => `<div class="receipt-row"><span>${i.name} ${i.dose} x${i.qty}</span><span>${fmt(i.total)}</span></div>`).join('')}<hr class="receipt-divider"><div class="receipt-row"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>${sale.discountAmt > 0 ? `<div class="receipt-row"><span>Discount (${sale.discount}%)</span><span>-${fmt(sale.discountAmt)}</span></div>` : ''}<div class="receipt-row bold"><span>TOTAL</span><span>${fmt(sale.total)}</span></div><hr class="receipt-divider">${pays}${sale.creditDetails ? `<div class="receipt-row"><span>Credit to:</span><span>${sale.creditDetails.name}</span></div><div class="receipt-row"><span>Due:</span><span>${sale.creditDetails.dueDate}</span></div>` : ''}<div class="receipt-footer"><p>Thank you for your business!<br>Powered by DawaPOS</p></div></div>`;
- openModal('receiptModal'); }
+ window._currentReceiptSaleId = sale.id; const ph = document.getElementById('receiptSmsPhone'); if (ph) ph.value = sale.customerPhone || (sale.creditDetails && sale.creditDetails.phone) || ''; updateReceiptSmsStatus(sale); openModal('receiptModal'); }
 function printReceipt() { window.print(); }
+
+// ===== RECEIPT SHARING & INVOICES =====
+window._currentReceiptSaleId = null;
+window._invoiceSaleId = null;
+function receiptToText(sale) { const s = db.settings; const line = '--------------------------------';
+ const payLabels = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', insurance: 'Insurance', credit: 'Credit' };
+ let t = `${s.pharmacyName}\n${s.address} | ${s.phone}\n${line}\nRECEIPT ${sale.receipt}\n${new Date(sale.date).toLocaleString()}\nServed by: ${sale.by}\n${line}\n`;
+ sale.items.forEach(i => { t += `${i.name} ${i.dose} x${i.qty}  ${fmt(i.total)}\n`; });
+ t += line + '\n';
+ if (sale.discountAmt > 0) t += `Subtotal: ${fmt(sale.subtotal)}\nDiscount (${sale.discount}%): -${fmt(sale.discountAmt)}\n`;
+ t += `TOTAL: ${fmt(sale.total)}\n` + Object.entries(sale.payments).filter(([, v]) => v > 0).map(([k, v]) => `${payLabels[k]}: ${fmt(v)}`).join('\n');
+ if (sale.creditDetails) { const ci = creditInfo(sale); if (ci.balance > 0.005) t += `\nBalance due: ${fmt(ci.balance)} by ${sale.creditDetails.dueDate}`; }
+ t += `\n${line}\nThank you for your business!`;
+ return t; }
+function sendReceiptSMS() { const sale = db.sales.find(x => x.id === window._currentReceiptSaleId);
+ if (!sale) { showToast('No receipt to send', 'error'); return; }
+ const phone = (document.getElementById('receiptSmsPhone').value || '').trim();
+ window.location.href = `sms:${phone}?body=${encodeURIComponent(receiptToText(sale))}`;
+ showToast('Opening your messaging app...', 'success'); }
+function sendReceiptWhatsApp() { const sale = db.sales.find(x => x.id === window._currentReceiptSaleId);
+ if (!sale) { showToast('No receipt to send', 'error'); return; }
+ let phone = (document.getElementById('receiptSmsPhone').value || '').replace(/[^0-9]/g, '');
+ let cc = '254'; const sp = (db.settings.phone || '').replace(/[^0-9]/g, '');
+ if (sp && !sp.startsWith('0') && sp.length >= 11) cc = sp.slice(0, 3);
+ if (phone.startsWith('0')) phone = cc + phone.slice(1);
+ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(receiptToText(sale))}`, '_blank'); }
+function openInvoice(saleId) { const sale = db.sales.find(x => x.id === saleId);
+ if (!sale) { showToast('Sale not found', 'error'); return; }
+ window._invoiceSaleId = saleId;
+ const cd = sale.creditDetails || {};
+ const prevName = document.getElementById('invCustName'); const prevPhone = document.getElementById('invCustPhone');
+ document.getElementById('invoiceBody').innerHTML = `<div class="inv-edit-row no-print"><input type="text" id="invCustName" placeholder="Customer name" value="${(prevName ? prevName.value : (cd.name || '')).replace(/"/g, '&quot;')}"><input type="tel" id="invCustPhone" placeholder="Customer phone" value="${(prevPhone ? prevPhone.value : (cd.phone || '')).replace(/"/g, '&quot;')}"><button class="btn btn-outline" onclick="renderInvoice()"><i class="fas fa-check"></i> Update</button></div><div id="invoiceSheetWrap"></div>`;
+ renderInvoice(); openModal('invoiceModal'); }
+function renderInvoice() { const sale = db.sales.find(x => x.id === window._invoiceSaleId); if (!sale) return; const s = db.settings;
+ const custName = document.getElementById('invCustName').value.trim() || 'Walk-in Customer';
+ const custPhone = document.getElementById('invCustPhone').value.trim();
+ const invNo = 'INV-' + String(sale.id).padStart(4, '0');
+ const creditAmt = (sale.payments && sale.payments.credit) || 0;
+ const paid = creditAmt > 0 ? creditInfo(sale).paid + (sale.total - creditAmt) : sale.total;
+ const balance = +(sale.total - paid).toFixed(2);
+ const status = balance <= 0.005 ? '<span class="inv-status paid">PAID</span>' : (paid > 0 ? '<span class="inv-status partial">PARTIALLY PAID</span>' : '<span class="inv-status unpaid">UNPAID</span>');
+ const esc = v => String(v).replace(/</g, '&lt;');
+ document.getElementById('invoiceSheetWrap').innerHTML = `<div class="invoice-sheet">
+ <div class="inv-top"><div class="inv-brand"><h2>${esc(s.pharmacyName)}</h2><p>${esc(s.address)}<br>${esc(s.phone)}${s.email ? '<br>' + esc(s.email) : ''}</p></div>
+ <div class="inv-title"><h1>INVOICE</h1><p>${invNo}<br>Date: ${new Date(sale.date).toLocaleDateString()}${sale.creditDetails && sale.creditDetails.dueDate ? '<br>Due: ' + sale.creditDetails.dueDate : ''}<br>${status}</p></div></div>
+ <div class="inv-parties"><div><div class="label">Bill To</div><div class="name">${esc(custName)}</div>${custPhone ? `<div class="det">${esc(custPhone)}</div>` : ''}</div><div><div class="label">Served By</div><div class="name">${esc(sale.by)}</div><div class="det">Ref: ${sale.receipt}</div></div></div>
+ <table class="inv-table"><thead><tr><th>#</th><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr></thead><tbody>
+ ${sale.items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.name)} ${esc(i.dose)}</td><td class="num">${i.qty}</td><td class="num">${fmt(i.price)}</td><td class="num">${fmt(i.total)}</td></tr>`).join('')}
+ </tbody></table>
+ <div class="inv-totals"><div class="row"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
+ ${sale.discountAmt > 0 ? `<div class="row"><span>Discount (${sale.discount}%)</span><span>-${fmt(sale.discountAmt)}</span></div>` : ''}
+ <div class="row grand"><span>TOTAL</span><span>${fmt(sale.total)}</span></div>
+ <div class="row"><span>Amount Paid</span><span>${fmt(paid)}</span></div>
+ ${balance > 0.005 ? `<div class="row balance"><span>Balance Due</span><span>${fmt(balance)}</span></div>` : ''}</div>
+ <div class="inv-foot">Thank you for your business!<br>${esc(s.pharmacyName)} &mdash; powered by DawaPOS</div></div>`; }
+function printInvoice() { window.print(); }
+
+// ===== SMS GATEWAY (automatic transactional receipts) =====
+const DEFAULT_SMS_TEMPLATE = '{business}: Receipt {receipt} ({date}). Items: {itemCount}. Total: {total}. Paid: {payments}. {balance}Thank you!';
+function defaultCountryCode() { if (db.settings.smsCountryCode) return db.settings.smsCountryCode; const sp = (db.settings.phone || '').replace(/[^0-9]/g, ''); return (sp && !sp.startsWith('0') && sp.length >= 11) ? sp.slice(0, 3) : '255'; }
+function normalizePhoneLocal(raw) { let d = (raw || '').replace(/[^0-9]/g, ''); if (!d) return null; if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = defaultCountryCode() + d.slice(1); return (d.length >= 9 && d.length <= 15) ? '+' + d : null; }
+function fillSmsTemplate(tpl, sale) { const payLabels = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', insurance: 'Insurance', credit: 'Credit' };
+ const pays = Object.entries(sale.payments).filter(([, v]) => v > 0).map(([k, v]) => payLabels[k] + ' ' + fmt(v)).join(', ');
+ let balance = '';
+ if (sale.creditDetails) { const ci = creditInfo(sale); if (ci.balance > 0.005) balance = `Balance due: ${fmt(ci.balance)} by ${sale.creditDetails.dueDate}. `; }
+ const map = { business: db.settings.pharmacyName, receipt: sale.receipt, date: new Date(sale.date).toLocaleDateString(), items: sale.items.map(i => `${i.name} x${i.qty}`).join(', '), itemCount: sale.items.reduce((n, i) => n + i.qty, 0), total: fmt(sale.total), payments: pays, balance, customer: (sale.creditDetails && sale.creditDetails.name) || '' };
+ return String(tpl || DEFAULT_SMS_TEMPLATE).replace(/\{(\w+)\}/g, (m, k) => (map[k] !== undefined ? String(map[k]) : m)); }
+async function sendGatewaySms(sale, phoneRaw) { const phone = normalizePhoneLocal(phoneRaw);
+ if (!phone) { sale.smsStatus = 'failed'; sale.smsError = 'invalid phone number'; saveData(); updateReceiptSmsStatus(sale); return; }
+ sale.smsStatus = 'pending'; sale.customerPhone = phone; saveData(); updateReceiptSmsStatus(sale);
+ try { const { data, error } = await sbClient.functions.invoke('send-sms', { body: { saleId: sale.id, receipt: sale.receipt, phone, message: fillSmsTemplate(db.settings.smsTemplate, sale), provider: db.settings.smsProvider || 'africastalking', defaultCc: defaultCountryCode() } });
+  if (error) throw error;
+  sale.smsStatus = (data && data.status) || 'sent'; sale.smsGatewayId = data && data.gatewayId; sale.smsError = (data && data.error) || null;
+  if (sale.smsStatus === 'test') showToast('SMS logged in TEST mode (add provider credentials to go live)', 'warning');
+  else if (sale.smsStatus === 'sent') showToast('Receipt SMS sent to ' + phone, 'success');
+  else showToast('SMS failed: ' + (sale.smsError || 'unknown error'), 'error'); }
+ catch (e) { console.error('SMS gateway error', e); sale.smsStatus = 'failed'; sale.smsError = String((e && e.message) || e); showToast('SMS send failed - the sale is not affected', 'warning'); }
+ saveData(); updateReceiptSmsStatus(sale); }
+function updateReceiptSmsStatus(sale) { const el = document.getElementById('receiptSmsStatus'); if (!el) return;
+ if (!sale || !sale.customerPhone) { el.textContent = ''; return; }
+ const map = { pending: ['Sending receipt SMS...', 'var(--warning)'], sent: ['Receipt SMS sent to ' + sale.customerPhone, 'var(--success)'], test: ['SMS logged (TEST mode) for ' + sale.customerPhone, 'var(--info)'], failed: ['SMS failed: ' + (sale.smsError || 'error') + ' - tap Auto-SMS to retry', 'var(--danger)'] };
+ const m = map[sale.smsStatus]; el.textContent = m ? m[0] : ''; el.style.color = m ? m[1] : 'var(--gray)'; }
+function resendGatewaySms() { const sale = db.sales.find(x => x.id === window._currentReceiptSaleId); if (!sale) { showToast('No receipt loaded', 'error'); return; }
+ const phone = document.getElementById('receiptSmsPhone').value.trim() || sale.customerPhone;
+ if (!phone) { showToast('Enter the customer phone number first', 'error'); return; }
+ sendGatewaySms(sale, phone); }
 
