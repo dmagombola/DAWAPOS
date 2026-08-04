@@ -2,7 +2,7 @@
 let editingProductId = null;
 function renderInventory() { const q = (document.getElementById('invSearch').value || '').toLowerCase(); const cat = document.getElementById('invCategory').value; const stockF = document.getElementById('invStock').value; const tbody = document.getElementById('inventoryTable');
  renderInvStats(); renderReceivals();
- let prods = db.products.filter(p => (!q || p.name.toLowerCase().includes(q) || (p.batch || '').toLowerCase().includes(q)) && (!cat || p.category === cat));
+ let prods = db.products.filter(p => (!q || p.name.toLowerCase().includes(q) || (p.batch || '').toLowerCase().includes(q)) && (!cat || p.category === cat)).sort((a, b) => a.name.localeCompare(b.name));
  if (stockF === 'low') prods = prods.filter(p => p.stock > 0 && p.stock <= p.reorder);
  if (stockF === 'out') prods = prods.filter(p => p.stock <= 0);
  if (stockF === 'expiring') prods = prods.filter(p => p.expiry && Math.ceil((new Date(p.expiry) - new Date()) / 86400000) <= 30);
@@ -138,7 +138,7 @@ function viewTransaction(id) { const s = db.sales.find(x => x.id === id); if (!s
   html += `<hr class="receipt-divider"><div class="receipt-row"><span>Credit customer</span><span>${s.creditDetails.name} (${s.creditDetails.phone})</span></div><div class="receipt-row"><span>Due date</span><span>${s.creditDetails.dueDate}</span></div><div class="receipt-row"><span>Credit balance</span><strong style="color: var(--danger);">${fmt(ci.balance)}</strong></div>`;
   if ((s.settlements || []).length) html += '<hr class="receipt-divider"><strong>Payments received:</strong>' + s.settlements.map(st => `<div class="receipt-row"><span>${new Date(st.date).toLocaleDateString()} (${st.method})</span><span>${fmt(st.amount)}</span></div>`).join(''); }
  document.getElementById('transBody').innerHTML = html;
- document.getElementById('transFooter').innerHTML = `${s.status !== 'returned' ? `<button class="btn btn-outline" onclick="editSale(${s.id})"><i class="fas fa-pen"></i> Edit</button><button class="btn btn-warning" onclick="returnSale(${s.id}); closeModal('transModal');"><i class="fas fa-rotate-left"></i> Return</button>` : ''}<button class="btn btn-danger" onclick="deleteSale(${s.id}); closeModal('transModal');"><i class="fas fa-trash"></i> Delete</button><button class="btn btn-primary" onclick="showReceipt(db.sales.find(x => x.id === ${s.id}))"><i class="fas fa-print"></i> Receipt</button>`;
+ document.getElementById('transFooter').innerHTML = `${s.status !== 'returned' ? `<button class="btn btn-outline" onclick="editSale(${s.id})"><i class="fas fa-pen"></i> Edit</button><button class="btn btn-warning" onclick="returnSale(${s.id}); closeModal('transModal');"><i class="fas fa-rotate-left"></i> Return</button>` : ''}<button class="btn btn-danger" onclick="deleteSale(${s.id}); closeModal('transModal');"><i class="fas fa-trash"></i> Delete</button><button class="btn btn-outline" onclick="openInvoice(${s.id})"><i class="fas fa-file-invoice"></i> Invoice</button><button class="btn btn-primary" onclick="showReceipt(db.sales.find(x => x.id === ${s.id}))"><i class="fas fa-print"></i> Receipt</button>`;
  openModal('transModal'); }
 function returnSale(id) { const s = db.sales.find(x => x.id === id); if (!s || s.status === 'returned') return;
  if (!confirm(`Return sale ${s.receipt}? All items will be restored to stock.`)) return;
