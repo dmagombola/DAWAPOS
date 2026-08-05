@@ -1,5 +1,5 @@
 // DawaPOS Service Worker - offline app shell + smart caching
-const CACHE = 'dawapos-v1';
+const CACHE = 'dawapos-v2';
 const SHELL = [
   './',
   'index.html',
@@ -9,7 +9,9 @@ const SHELL = [
   'app3.js',
   'pwa.js',
   'manifest.json',
-  'icon.svg'
+  'icon.svg',
+  'logo.svg',
+  'cross.svg'
 ];
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
