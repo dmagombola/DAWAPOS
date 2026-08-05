@@ -37,8 +37,7 @@
 
 <div class="login-screen" id="loginScreen">
     <div class="login-box">
-        <div class="logo-icon"><i class="fas fa-prescription-bottle-medical"></i></div>
-        <h1>DawaPOS</h1>
+        <img src="logo.svg" alt="DawaPOS" class="login-logo">
         <p class="subtitle">Pharmacy POS & Inventory Management<br><span style="color: var(--success);"><i class="fas fa-wifi"></i> Cloud Sync Enabled</span></p>
         <div class="input-group">
             <label>Username</label>
@@ -63,7 +62,7 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="brand">
-                <i class="fas fa-prescription-bottle-medical"></i>
+                <img src="cross.svg" alt="" class="brand-mark">
                 <div class="brand-text"><h2>DawaPOS</h2><span>Cloud Pharmacy POS</span></div>
             </div>
         </div>
@@ -226,7 +225,7 @@
                     <div class="form-grid"><div class="form-group"><label>SMS Provider</label><select id="setSmsProvider"><option value="africastalking">Africa's Talking</option><option value="twilio">Twilio</option></select></div><div class="form-group"><label>Default Country Code</label><input type="text" id="setSmsCountryCode" placeholder="e.g. 255"></div></div>
                     <div class="form-group"><label>Message Template</label><textarea id="setSmsTemplate" rows="3"></textarea><small style="color: var(--gray); font-size: 12px;">Placeholders: {business} {receipt} {date} {items} {itemCount} {total} {payments} {balance} {customer}</small></div>
                     <div class="form-group"><label>Test Phone</label><div style="display: flex; gap: 10px;"><input type="tel" id="setSmsTestPhone" placeholder="07XXXXXXXX" style="flex: 1;"><button class="btn btn-outline" onclick="sendTestSms()"><i class="fas fa-paper-plane"></i> Send Test SMS</button></div><small id="smsTestResult" style="display: block; margin-top: 8px; font-size: 13px;"></small></div>
-                    <p style="font-size: 12px; color: var(--gray); line-height: 1.6;">SMS is sent via your Supabase <strong>send-sms</strong> function. Until you add provider credentials (Africa's Talking username + API key) as Supabase secrets, it runs in <strong>test mode</strong> — messages are validated and logged but not delivered. Sender ID is set via the SMS_SENDER_ID secret.</p>
+                    <p style="font-size: 12px; color: var(--gray); line-height: 1.6;">SMS is sent via your Supabase <strong>send-sms</strong> function. Until you add provider credentials (Africa's Talking username + API key) as Supabase secrets, it runs in <strong>test mode</strong> \u2014 messages are validated and logged but not delivered. Sender ID is set via the SMS_SENDER_ID secret.</p>
                     <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save SMS Settings</button>
                 </div></div>
             </div>
