@@ -78,13 +78,13 @@ async function sendTestSms() { const phone = document.getElementById('setSmsTest
   else if (data.status === 'sent') { out.textContent = 'Sent! Gateway ID: ' + (data.gatewayId || '-'); out.style.color = 'var(--success)'; }
   else { out.textContent = 'Failed: ' + (data.error || 'unknown error'); out.style.color = 'var(--danger)'; } }
  catch (e) { out.textContent = 'Error: ' + ((e && e.message) || e); out.style.color = 'var(--danger)'; } }
-function saveSettings() { db.settings.pharmacyName = document.getElementById('setPharmacyName').value.trim() || 'DawaPOS Pharmacy'; db.settings.phone = document.getElementById('setPhone').value.trim(); db.settings.email = document.getElementById('setEmail').value.trim(); db.settings.address = document.getElementById('setAddress').value.trim(); db.settings.currency = document.getElementById('setCurrency').value.trim() || 'KES'; db.settings.taxRate = parseFloat(document.getElementById('setTax').value) || 0; db.settings.lowStockThreshold = parseInt(document.getElementById('setThreshold').value) || 10;
+function saveSettings() { db.settings.pharmacyName = document.getElementById('setPharmacyName').value.trim() || 'ASM DLDM'; db.settings.phone = document.getElementById('setPhone').value.trim(); db.settings.email = document.getElementById('setEmail').value.trim(); db.settings.address = document.getElementById('setAddress').value.trim(); db.settings.currency = document.getElementById('setCurrency').value.trim() || 'TZS'; db.settings.taxRate = parseFloat(document.getElementById('setTax').value) || 0; db.settings.lowStockThreshold = parseInt(document.getElementById('setThreshold').value) || 10;
  db.settings.smsEnabled = document.getElementById('setSmsEnabled').checked;
  db.settings.smsProvider = document.getElementById('setSmsProvider').value;
  db.settings.smsCountryCode = document.getElementById('setSmsCountryCode').value.replace(/[^0-9]/g, '');
  db.settings.smsTemplate = document.getElementById('setSmsTemplate').value.trim() || DEFAULT_SMS_TEMPLATE;
  saveData(); updateDashboard(); showToast('Settings saved and synced!', 'success'); }
-function updateCurrency() { db.settings.currency = document.getElementById('setCurrency').value.trim() || 'KES'; }
+function updateCurrency() { db.settings.currency = document.getElementById('setCurrency').value.trim() || 'TZS'; }
 function clearAllData() { if (!confirm('This will erase ALL products, sales, expenses and reminders on ALL devices. User accounts are kept. Continue?')) return; if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
  localStorage.removeItem('dawaposDB');
  const clean = { products: [], sales: [], expenses: [], suppliers: [], reminders: [], settings: db.settings, users: db.users };
@@ -184,3 +184,12 @@ document.getElementById('historyDate').value = todayStr();
 loadData();
 updateDashboard();
 renderPOS();
+refreshCategoryControls();
+
+// First-interaction fix: on some devices (especially installed PWAs) the very first
+// tap after the app opens is consumed by the OS/webview and clicks appear "inactive"
+// until the screen is touched once. Passive touch/pointer listeners make the document
+// interactive immediately, and focusing the username field activates the login area.
+['touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, () => {}, { passive: true }));
+const loginUserEl = document.getElementById('loginUser');
+if (loginUserEl) { loginUserEl.focus(); loginUserEl.select(); }
