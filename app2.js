@@ -190,3 +190,4 @@ function exportHistory(format) { const dateVal = document.getElementById('histor
  if (!rows.length) { showToast('No data to export for this date', 'warning'); return; }
  if (format === 'excel') { const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Sales'); XLSX.writeFile(wb, `sales_${dateVal}.xlsx`); }
  else { const doc = new jspdf.jsPDF(); doc.text(`Sales Report - ${dateVal}`, 14, 15); doc.autoTable({ head: [Object.keys(rows[0])], body: rows.map(r => Object.values(r)), startY: 20, styles: { fontSize: 8 } }); doc.save(`sales_${dateVal}.pdf`); } }
+
